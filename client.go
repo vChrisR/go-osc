@@ -15,6 +15,7 @@ type Client struct {
 	port       int
 	laddr      *net.UDPAddr
 	connection *net.UDPConn
+	buffer     []byte
 }
 
 // NewClient creates a new OSC client. The Client is used to send OSC
@@ -22,9 +23,10 @@ type Client struct {
 // specifies the IP address and `port` defines the target port where the
 // messages and bundles will be send to.
 func NewClient(ip string, port int) *Client {
-	return &Client{ip: ip, port: port, laddr: nil}
+	return &Client{ip: ip, port: port, laddr: nil, buffer: make([]byte, 65535)}
 }
 
+// Connect Creates a net.UDPConn. This connection stays open until Disconnect is called
 func (c *Client) Connect(retries int) error {
 	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", c.ip, c.port))
 	if err != nil {
@@ -45,6 +47,7 @@ func (c *Client) Connect(retries int) error {
 	return nil
 }
 
+// Disconnect closes the opened net.UDPConn
 func (c *Client) Disconnect() error {
 	return c.connection.Close()
 }
@@ -59,7 +62,7 @@ func (c *Client) SetLocalAddr(ip string, port int) error {
 	return nil
 }
 
-// Send sends an OSC Bundle or an OSC Message.
+// Send sends an OSC Message.
 func (c *Client) Send(message *Message) error {
 	if c.connection == nil {
 		return fmt.Errorf("Unable to send, not connected.")
@@ -78,15 +81,14 @@ func (c *Client) Send(message *Message) error {
 
 // Receive listens for messages (replies, this is not a server) until the timeout is expired
 func (c *Client) Receive(timeout time.Duration) (error, *Message) {
-	buffer := make([]byte, 65535)
 	c.connection.SetReadDeadline(time.Now().Add(timeout))
-	_, _, err := c.connection.ReadFrom(buffer)
+	_, _, err := c.connection.ReadFrom(c.buffer)
 	if err != nil {
 		return err, nil
 	}
 
 	var start int
-	msg, err := readMessage(bufio.NewReader(bytes.NewBuffer(buffer)), &start)
+	msg, err := readMessage(bufio.NewReader(bytes.NewBuffer(c.buffer)), &start)
 	if err != nil {
 		return err, nil
 	}

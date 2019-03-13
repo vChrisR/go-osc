@@ -404,14 +404,3 @@ func writePaddedString(str string, buf *bytes.Buffer) (int, error) {
 func padBytesNeeded(elementLen int) int {
 	return 4*(elementLen/4+1) - elementLen
 }
-
-////
-// Utility and helper functions
-////
-
-// PrintMessage pretty prints an OSC message to the standard output.
-func PrintMessage(msg *Message) {
-	fmt.Println(msg)
-}
-
-// getTypeTag returns the OSC type tag for the given argument.
