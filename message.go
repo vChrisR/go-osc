@@ -47,7 +47,11 @@ func (msg *Message) String() string {
 	tags := ","
 	for _, arg := range msg.Arguments {
 		if t, ok := typeToTag[reflect.TypeOf(arg).String()]; ok {
-			tags += t
+			tt := t
+			if tt == "T" && !arg.(bool) {
+				tt = "F"
+			}
+			tags += tt
 		} else {
 			return ""
 		}
