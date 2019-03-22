@@ -22,46 +22,6 @@ func TestMessage_Append(t *testing.T) {
 	}
 }
 
-/*
-func TestMessage_TypeTags(t *testing.T) {
-	for _, tt := range []struct {
-		desc string
-		msg  *Message
-		tags string
-		ok   bool
-	}{
-		{"addr_only", NewMessage("/"), ",", true},
-		{"nil", NewMessage("/", nil), ",N", true},
-		{"bool_true", NewMessage("/", true), ",T", true},
-		{"bool_false", NewMessage("/", false), ",F", true},
-		{"int32", NewMessage("/", int32(1)), ",i", true},
-		{"int64", NewMessage("/", int64(2)), ",h", true},
-		{"float32", NewMessage("/", float32(3.0)), ",f", true},
-		{"float64", NewMessage("/", float64(4.0)), ",d", true},
-		{"string", NewMessage("/", "5"), ",s", true},
-		{"[]byte", NewMessage("/", []byte{'6'}), ",b", true},
-		{"two_args", NewMessage("/", "123", int32(456)), ",si", true},
-		{"invalid_msg", nil, "", false},
-		{"invalid_arg", NewMessage("/foo/bar", 789), "", false},
-	} {
-		tags, err := tt.msg.TypeTags()
-		if err != nil && tt.ok {
-			t.Errorf("%s: TypeTags() unexpected error: %s", tt.desc, err)
-			continue
-		}
-		if err == nil && !tt.ok {
-			t.Errorf("%s: TypeTags() expected an error", tt.desc)
-			continue
-		}
-		if !tt.ok {
-			continue
-		}
-		if got, want := tags, tt.tags; got != want {
-			t.Errorf("%s: TypeTags() = '%s', want = '%s'", tt.desc, got, want)
-		}
-	}
-}
-*/
 func TestMessage_String(t *testing.T) {
 	for _, tt := range []struct {
 		desc string
@@ -156,25 +116,16 @@ func TestPadBytesNeeded(t *testing.T) {
 	}
 }
 
-func TestClientSetLocalAddr(t *testing.T) {
-	client := NewClient("localhost", 8967)
-	err := client.SetLocalAddr("localhost", 41789)
-	if err != nil {
-		t.Error(err.Error())
-	}
-	expectedAddr := "127.0.0.1:41789"
-	if client.laddr.String() != expectedAddr {
-		t.Errorf("Expected laddr to be %s but was %s", expectedAddr, client.laddr.String())
-	}
-}
+var parsedMessage *Message
 
-const zero = string(byte(0))
-
-// nulls returns a string of `i` nulls.
-func nulls(i int) string {
-	s := ""
-	for j := 0; j < i; j++ {
-		s += zero
+func BenchmarkReadMessage(b *testing.B) {
+	message := NewMessage("/text")
+	message.Append("thisisastring")
+	message.Append(true)
+	message.Append(int32(42))
+	data, _ := message.MarshalBinary()
+	for n := 0; n < b.N; n++ {
+		var start int = 0
+		parsedMessage, _ = readMessage(bufio.NewReader(bytes.NewBuffer(data)), &start)
 	}
-	return s
 }
