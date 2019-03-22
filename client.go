@@ -8,9 +8,16 @@ import (
 	"time"
 )
 
+type Client interface {
+	Connect(int) error
+	Disconnect() error
+	Send(*Message) error
+	Receive(time.Duration) (error, *Message)
+}
+
 // Client enables you to send OSC packets. It sends OSC messages and bundles to
 // the given IP address and port.
-type Client struct {
+type client struct {
 	ip         string
 	port       int
 	laddr      *net.UDPAddr
@@ -22,19 +29,30 @@ type Client struct {
 // messages and OSC bundles over an UDP network connection. The `ip` argument
 // specifies the IP address and `port` defines the target port where the
 // messages and bundles will be send to.
-func NewClient(ip string, port int) *Client {
-	return &Client{ip: ip, port: port, laddr: nil, buffer: make([]byte, 65535)}
+func NewClient(ip string, port int, localIp string, localPort int) *client {
+	c := &client{
+		ip:     ip,
+		port:   port,
+		laddr:  nil,
+		buffer: make([]byte, 1024),
+	}
+
+	if localIp != "" {
+		c.laddr, _ = net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", localIp, localPort))
+	}
+
+	return c
 }
 
 // Connect Creates a net.UDPConn. This connection stays open until Disconnect is called
-func (c *Client) Connect(retries int) error {
+func (c *client) Connect(retries int) error {
 	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", c.ip, c.port))
 	if err != nil {
 		return err
 	}
 
 	for c.connection == nil && retries > 0 {
-		if c.connection, err = net.DialUDP("udp", nil, addr); err != nil {
+		if c.connection, err = net.DialUDP("udp", c.laddr, addr); err != nil {
 			time.Sleep(2 * time.Second)
 		}
 		retries--
@@ -48,22 +66,12 @@ func (c *Client) Connect(retries int) error {
 }
 
 // Disconnect closes the opened net.UDPConn
-func (c *Client) Disconnect() error {
+func (c *client) Disconnect() error {
 	return c.connection.Close()
 }
 
-// SetLocalAddr sets the local address.
-func (c *Client) SetLocalAddr(ip string, port int) error {
-	laddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", ip, port))
-	if err != nil {
-		return err
-	}
-	c.laddr = laddr
-	return nil
-}
-
 // Send sends an OSC Message.
-func (c *Client) Send(message *Message) error {
+func (c *client) Send(message *Message) error {
 	if c.connection == nil {
 		return fmt.Errorf("Unable to send, not connected.")
 	}
@@ -80,7 +88,11 @@ func (c *Client) Send(message *Message) error {
 }
 
 // Receive listens for messages (replies, this is not a server) until the timeout is expired
-func (c *Client) Receive(timeout time.Duration) (error, *Message) {
+func (c *client) Receive(timeout time.Duration) (error, *Message) {
+	if c.connection == nil {
+		return fmt.Errorf("Unable to receive, not connected."), nil
+	}
+
 	c.connection.SetReadDeadline(time.Now().Add(timeout))
 	_, _, err := c.connection.ReadFrom(c.buffer)
 	if err != nil {
