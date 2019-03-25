@@ -8,12 +8,12 @@ import (
 	"time"
 )
 
-// osc Client exposes Connect, Disconnect, Send Receive.
+// Client exposes Connect, Disconnect, Send Receive.
 type Client interface {
 	Connect(int) error
 	Disconnect() error
 	Send(*Message) error
-	Receive(time.Duration) (error, *Message)
+	Receive(time.Duration) (*Message, error)
 }
 
 // Client enables you to send OSC packets. It sends OSC messages and bundles to
@@ -60,7 +60,7 @@ func (c *client) Connect(retries int) error {
 	}
 
 	if c.connection == nil {
-		return fmt.Errorf("Unable to connect to %v:%v.", c.ip, c.port)
+		return fmt.Errorf("unable to connect to %v:%v", c.ip, c.port)
 	}
 
 	return nil
@@ -74,7 +74,7 @@ func (c *client) Disconnect() error {
 // Send sends an OSC Message.
 func (c *client) Send(message *Message) error {
 	if c.connection == nil {
-		return fmt.Errorf("Unable to send, not connected.")
+		return fmt.Errorf("unable to send, not connected")
 	}
 
 	data, err := message.MarshalBinary()
@@ -89,22 +89,22 @@ func (c *client) Send(message *Message) error {
 }
 
 // Receive listens for messages (replies, this is not a server) until the timeout is expired
-func (c *client) Receive(timeout time.Duration) (error, *Message) {
+func (c *client) Receive(timeout time.Duration) (*Message, error) {
 	if c.connection == nil {
-		return fmt.Errorf("Unable to receive, not connected."), nil
+		return nil, fmt.Errorf("unable to receive, not connected")
 	}
 
 	c.connection.SetReadDeadline(time.Now().Add(timeout))
 	_, _, err := c.connection.ReadFrom(c.buffer)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
 	var start int
 	msg, err := readMessage(bufio.NewReader(bytes.NewBuffer(c.buffer)), &start)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 
-	return nil, msg
+	return msg, nil
 }

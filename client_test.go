@@ -10,10 +10,11 @@ import (
 )
 
 func TestConnectDisconnect(t *testing.T) {
+	laddr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", "localhost", 41789))
 	c := &client{
 		ip:     "localhost",
 		port:   8967,
-		laddr:  nil,
+		laddr:  laddr,
 		buffer: make([]byte, 1024),
 	}
 
@@ -84,7 +85,7 @@ func TestSendReceive(t *testing.T) {
 	c.Send(NewMessage("/test"))
 
 	//this tests the reply from the server which should be identical to what we send
-	err, nmsg := c.Receive(1 * time.Second)
+	nmsg, err := c.Receive(1 * time.Second)
 	if err != nil {
 		t.Errorf("Receive error should be nil but got: %s", err)
 	} else {
@@ -117,13 +118,13 @@ func TestSendDisconnected(t *testing.T) {
 
 func TestReceiveFail(t *testing.T) {
 	c := NewClient("localhost", 8967, "", 0)
-	err, _ := c.Receive(1 * time.Second)
+	_, err := c.Receive(1 * time.Second)
 	if err == nil {
 		t.Errorf("Expected err to be not nil but got nil")
 	}
 
 	c.Connect(1)
-	err, _ = c.Receive(1 * time.Second)
+	_, err = c.Receive(1 * time.Second)
 	if err == nil {
 		t.Errorf("Expected err to be not nil but got nil")
 	}
