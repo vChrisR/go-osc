@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// osc Client exposes Connect, Disconnect, Send Receive.
 type Client interface {
 	Connect(int) error
 	Disconnect() error
@@ -22,14 +23,14 @@ type client struct {
 	port       int
 	laddr      *net.UDPAddr
 	connection *net.UDPConn
-	buffer     []byte
+	buffer     []byte //use one receive buffer instead of creating a new one with each receive(). This dramatically reduces GC.
 }
 
 // NewClient creates a new OSC client. The Client is used to send OSC
 // messages and OSC bundles over an UDP network connection. The `ip` argument
 // specifies the IP address and `port` defines the target port where the
 // messages and bundles will be send to.
-func NewClient(ip string, port int, localIp string, localPort int) *client {
+func NewClient(ip string, port int, localIP string, localPort int) Client {
 	c := &client{
 		ip:     ip,
 		port:   port,
@@ -37,8 +38,8 @@ func NewClient(ip string, port int, localIp string, localPort int) *client {
 		buffer: make([]byte, 1024),
 	}
 
-	if localIp != "" {
-		c.laddr, _ = net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", localIp, localPort))
+	if localIP != "" {
+		c.laddr, _ = net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", localIP, localPort))
 	}
 
 	return c

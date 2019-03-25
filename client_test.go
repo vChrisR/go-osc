@@ -9,21 +9,14 @@ import (
 	"time"
 )
 
-func TestNewClient(t *testing.T) {
-	c := NewClient("localhost", 8967, "localhost", 41789)
-	expectedAddr := "127.0.0.1:41789"
-	if c.laddr.String() != expectedAddr {
-		t.Errorf("Expected laddr to be %s but was %s", expectedAddr, c.laddr.String())
-	}
-
-	expectedIp := "localhost"
-	if c.ip != expectedIp {
-		t.Errorf("Expected ip to be %s but was %s", expectedIp, c.ip)
-	}
-}
-
 func TestConnectDisconnect(t *testing.T) {
-	c := NewClient("localhost", 8967, "localhost", 41789)
+	c := &client{
+		ip:     "localhost",
+		port:   8967,
+		laddr:  nil,
+		buffer: make([]byte, 1024),
+	}
+
 	err := c.Connect(1)
 	if err != nil {
 		t.Errorf("Expected err to be nil but got %s", err.Error())
